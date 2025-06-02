@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Help Gaza Donate</title>
+  <script src="https://www.paypal.com/sdk/js?client-id=sb"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e0f7fa;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      padding-bottom: 20px;
+    }
+    h1, h2 {
+      color: #00796b;
+    }
+    .donate-section {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #00796b;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004d40;
+    }
+    .donor-list {
+      max-width: 600px;
+      margin: 40px auto 0;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #b2dfdb;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .share-buttons {
+      text-align: center;
+      margin-top: 30px;
+    }
+    .share-buttons a {
+      margin: 0 10px;
+      text-decoration: none;
+      font-size: 20px;
+    }
+    #paymentInfo {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #00695c;
+    }
+    .admin-panel {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fff3e0;
+      padding: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Help Gaza - Make a Donation</h1>
+  <p>Your support brings hope and help to those in need.</p>
+</header>
+
+<div class="donate-section">
+  <h2>Donate Now</h2>
+  <form id="donationForm">
+    <label for="name">Name:</label>
+    <input type="text" id="name" required />
+
+    <label for="email">Email:</label>
+    <input type="email" id="email" required />
+
+    <label for="amount">Donation Amount ($):</label>
+    <input type="number" id="amount" min="1" required />
+
+    <label for="paymentMethod">Payment Method:</label>
+    <select id="paymentMethod" required>
+      <option value="">Select a method</option>
+      <option value="PayPal">PayPal</option>
+      <option value="Other Wallet">Other Wallet</option>
+      <option value="Bank Transfer">Bank Transfer</option>
+    </select>
+
+    <div id="paymentInfo"></div>
+    <div id="paypal-button-container"></div>
+
+    <button type="submit">Donate</button>
+  </form>
+</div>
+
+<div class="donor-list">
+  <h2>Donors</h2>
+  <ul id="donorList"></ul>
+</div>
+
+<div class="share-buttons">
+  <h2>Share this campaign</h2>
+  <a href="https://facebook.com/sharer/sharer.php?u=https://yourwebsite.com" target="_blank">Facebook</a>
+  <a href="https://twitter.com/intent/tweet?text=Support%20Gaza%20today!&url=https://yourwebsite.com" target="_blank">Twitter</a>
+  <a href="https://wa.me/?text=Support%20Gaza%20today!%20https://yourwebsite.com" target="_blank">WhatsApp</a>
+</div>
+
+<div class="admin-panel">
+  <h2>Admin Panel</h2>
+  <input type="password" id="adminPass" placeholder="Enter admin password" />
+  <button onclick="loginAdmin()">Login</button>
+  <div id="adminView" style="display:none;">
+    <h3>All Donations</h3>
+    <ul id="adminDonorList"></ul>
+    <button onclick="exportCSV()">Export to CSV</button>
+  </div>
+</div>
+
+<script>
+  const donorListArray = [];
+
+  document.getElementById('paymentMethod').addEventListener('change', function () {
+    const method = this.value;
+    const donateBtn = document.querySelector('button[type="submit"]');
+    const paypalContainer = document.getElementById('paypal-button-container');
+    const paymentInfo = document.getElementById('paymentInfo');
+
+    // Reset info
+    paypalContainer.innerHTML = "";
+    paymentInfo.innerHTML = "";
+
+    if (method === "PayPal" || method === "Other Wallet") {
+      donateBtn.disabled = true;
+      paymentInfo.innerHTML = `Send your donation via <strong>${method}</strong> to: <br><strong>gabulawi94@gmail.com</strong>`;
+      renderPayPalButton();
+    } else if (method === "Bank Transfer") {
+      donateBtn.disabled = false;
+      paymentInfo.innerHTML = `Please DM us on WhatsApp for bank account details:<br><strong><a href="https://wa.me/254748162496" target="_blank">0748162496</a></strong>`;
+    } else {
+      donateBtn.disabled = false;
+    }
+  });
+
+  document.getElementById('donationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+    const method = document.getElementById('paymentMethod').value;
+
+    if (!name || !email || !amount || !method) {
+      return alert("Please fill all fields.");
+    }
+
+    if (method === "Bank Transfer") {
+      alert("Please DM us on WhatsApp to receive the bank account number.");
+      saveDonation(name, email, amount, method);
+    }
+  });
+
+  function renderPayPalButton() {
+    const amount = document.getElementById('amount').value.trim();
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if (!name || !email || !amount) {
+      document.getElementById('paypal-button-container').innerHTML += "<p style='color:red'>Please fill name, email, and amount first.</p>";
+      return;
+    }
+
+    paypal.Buttons({
+      createOrder: function(data, actions) {
+        return actions.order.create({
+          purchase_units: [{ amount: { value: amount } }]
+        });
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          alert(`Thank you, ${name}! Your PayPal donation of $${amount} is confirmed.`);
+          saveDonation(name, email, amount, "PayPal");
+
+          // Reset form
+          document.getElementById('donationForm').reset();
+          document.querySelector('button[type="submit"]').disabled = false;
+          document.getElementById('paypal-button-container').innerHTML = "";
+          document.getElementById('paymentInfo').innerHTML = "";
+        });
+      }
+    }).render('#paypal-button-container');
+  }
+
+  function saveDonation(name, email, amount, method) {
+    const donor = {
+      name,
+      email,
+      amount,
+      method,
+      time: new Date().toLocaleString()
+    };
+    donorListArray.unshift(donor);
+    updateDonorUI();
+    updateAdminUI();
+  }
+
+  function updateDonorUI() {
+    const list = document.getElementById('donorList');
+    list.innerHTML = '';
+    donorListArray.slice(0, 5).forEach(d => {
+      const li = document.createElement('li');
+      li.textContent = `${d.name} donated $${d.amount} via ${d.method}`;
+      list.appendChild(li);
+    });
+  }
+
+  function loginAdmin() {
+    const pass = document.getElementById('adminPass').value;
+    if (pass === "admin123") {
+      document.getElementById('adminView').style.display = 'block';
+      updateAdminUI();
+    } else {
+      alert("Wrong password.");
+    }
+  }
+
+  function updateAdminUI() {
+    const list = document.getElementById('adminDonorList');
+    list.innerHTML = '';
+    donorListArray.forEach(d => {
+      const li = document.createElement('li');
+      li.textContent = `${d.name} - $${d.amount} - ${d.method} - ${d.time}`;
+      list.appendChild(li);
+    });
+  }
+
+  function exportCSV() {
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + "Name,Email,Amount,Method,Time\n"
+      + donorListArray.map(d => `${d.name},${d.email},${d.amount},${d.method},${d.time}`).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "donations.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>
+</body>
+</html>
